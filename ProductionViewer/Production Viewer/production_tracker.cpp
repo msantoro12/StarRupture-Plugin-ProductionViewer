@@ -3,6 +3,7 @@
 #include "production_icons.h"
 #include "production_mass.h"
 #include "production_basecore.h"
+#include "production_waypoint.h"
 #include "Plugin Core/Helpers/plugin_helpers.h"
 #include "Plugin Core/Net/production_net.h"
 #include "Plugin Core/Signatures/plugin_signatures.h"
@@ -293,6 +294,7 @@ namespace ProductionTracker
 		{
 			ProductionIcons::Tick();
 			ProductionBaseCore::Tick(deltaSeconds);
+			ProductionWaypoint::Tick();
 			ProductionNet::Tick(deltaSeconds);
 			ServiceDeferredSessionLoad();
 
