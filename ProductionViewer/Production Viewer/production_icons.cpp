@@ -297,7 +297,8 @@ namespace ProductionIcons
 						if (!item)
 							continue;
 
-						const std::string uniqueName = item->UniqueItemName.ToString();
+						const SDK::FName* uniqueItemName = ProductionViewerFields::ItemUniqueName.In(item);
+						const std::string uniqueName = uniqueItemName ? uniqueItemName->ToString() : std::string();
 						if (uniqueName.empty())
 							continue;
 
@@ -385,6 +386,12 @@ namespace ProductionIcons
 
 	void Init(IPluginSelf* self)
 	{
+		if (!ProductionViewerFields::ItemIcons.On())
+		{
+			LOG_WARN("ProductionIcons: item icons are off - the game update moved something they need");
+			return;
+		}
+
 		IPluginSplash* splash = (self && self->hooks) ? self->hooks->Splash : nullptr;
 		if (splash && splash->IsVisible())
 			splash->AcquireSplashHold();

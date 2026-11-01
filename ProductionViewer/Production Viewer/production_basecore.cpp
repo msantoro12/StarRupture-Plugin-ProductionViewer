@@ -14,6 +14,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <mutex>
 #include <unordered_map>
 
@@ -31,18 +32,6 @@ namespace ProductionBaseCore
 			int32_t ArrayMax;
 		};
 		static_assert(sizeof(FGridHandleArray) == 16);
-
-		// FCrGridEntityHandle (24 bytes): { FMassEntityHandle EntityHandle;
-		// TSharedPtr<FCrGridEntityDataBase> Data; }. Only the leading entity
-		// handle matters to us; Data points at grid-internal cell bookkeeping.
-		struct FCrGridEntityHandleRaw
-		{
-			int32_t Index;
-			int32_t SerialNumber;
-			void*   DataObject;    // FCrGridEntityDataBase* (unused)
-			void*   RefController; // TSharedPtr intrusive refcount controller
-		};
-		static_assert(sizeof(FCrGridEntityHandleRaw) == 24);
 
 		using GetBaseCoresRangedBuildingFn = void(__fastcall*)(
 			SDK::UCrBaseCoreSubsystem* self, ProductionMass::FMassEntityHandle building,
@@ -178,19 +167,33 @@ namespace ProductionBaseCore
 			LOG_DEBUG("ProductionBaseCore: query for building Index=%u Serial=%u returned %d base core(s) "
 				"(data=%p max=%d)", building.Index, building.SerialNumber, out.ArrayNum, out.Data, out.ArrayMax);
 
-			auto* elements = static_cast<FCrGridEntityHandleRaw*>(out.Data);
+			// FCrGridEntityHandle is { FMassEntityHandle EntityHandle;
+			// TSharedPtr<FCrGridEntityDataBase> Data; }. Only the entity handle
+			// matters to us; Data's controller is released below. The stride is
+			// the struct's size, checked against the running build.
+			auto* elements = static_cast<const SDK::FCrGridEntityHandle*>(out.Data);
 			for (int32_t i = 0; i < out.ArrayNum; ++i)
 			{
+				const uint64_t* handleBits = ProductionViewerFields::GridEntityHandle.In(&elements[i]);
+				const ProductionViewerFields::SharedRef* data = ProductionViewerFields::GridEntityData.In(&elements[i]);
+				if (!handleBits)
+				{
+					if (data)
+						ReleaseGridHandleRef(data->Controller);
+					continue;
+				}
+
 				BaseCoreInfo info;
-				info.handle.Index = static_cast<uint32_t>(elements[i].Index);
-				info.handle.SerialNumber = static_cast<uint32_t>(elements[i].SerialNumber);
+				static_assert(sizeof(info.handle) == sizeof(*handleBits));
+				std::memcpy(&info.handle, handleBits, sizeof(info.handle));
 				info.name = ResolveBaseCoreName(world, info.handle);
 
 				LOG_DEBUG("ProductionBaseCore: base core Index=%u Serial=%u name='%s'",
 					info.handle.Index, info.handle.SerialNumber, info.name.c_str());
 
 				result.push_back(std::move(info));
-				ReleaseGridHandleRef(elements[i].RefController);
+				if (data)
+					ReleaseGridHandleRef(data->Controller);
 			}
 
 			// The backing buffer was allocated by the engine's FMemory - free
@@ -315,7 +318,7 @@ namespace ProductionBaseCore
 
 	std::vector<BaseCoreInfo> GetBaseCoresForBuilding(SDK::UWorld* world, ProductionMass::FMassEntityHandle building)
 	{
-		if (!world || !g_getBaseCoresRangedBuilding)
+		if (!world || !g_getBaseCoresRangedBuilding || !ProductionViewerFields::BaseCores.On())
 			return {};
 
 		const uint64_t key = PackHandle(building);
