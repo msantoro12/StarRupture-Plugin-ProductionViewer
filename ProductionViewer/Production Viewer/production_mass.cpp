@@ -6,6 +6,7 @@
 #include "CoreUObject_classes.hpp"
 #include "Chimera_structs.hpp"
 #include "MassSignals_classes.hpp"
+#include "plugin_map.h"
 
 #include <windows.h>
 #include <cstdio>
@@ -121,13 +122,9 @@ namespace ProductionMass
 		// UWorld::GetSubsystem<UMassEntitySubsystem>()
 		bool ResolveGetMassEntitySubsystem(IPluginSelf* self, IPluginHookScanner* scanner)
 		{
-			PluginScanRequest req = PLUGIN_SCAN_REQUEST_INIT;
-			req.hookName = "UWorld::GetSubsystem<UMassEntitySubsystem>";
-			req.pattern  = Signatures::GetMassEntitySubsystem;
-			req.kind     = PLUGIN_SCAN_FUNCTION_START;   // called with a UWorld* in RCX
-			req.flags    = PLUGIN_SCAN_FLAG_OPTIONAL;
-
-			uintptr_t addr = scanner->Resolve(self, &req);
+			// FUNCTION_START: called with a UWorld* in RCX.
+			uintptr_t addr = PluginMap::Function(scanner, self, "UWorld::GetSubsystem<UMassEntitySubsystem>",
+				Signatures::GetMassEntitySubsystem, PLUGIN_SCAN_FUNCTION_START, PLUGIN_SCAN_FLAG_OPTIONAL);
 			if (!addr)
 			{
 				LOG_WARN("ProductionMass: UWorld::GetSubsystem<UMassEntitySubsystem> unresolved");
@@ -223,25 +220,24 @@ namespace ProductionMass
 			// uniqueness is judged on the call site and FUNCTION_START on the
 			// function it names, which is the combination that makes this
 			// pattern shape safe.
-			PluginScanRequest req = PLUGIN_SCAN_REQUEST_INIT;
-			req.hookName = "GetMassFragment<FCrCraftingFragment>";
-			req.pattern  = Signatures::GetMassFragment_FCrCraftingFragment;
-			req.kind     = PLUGIN_SCAN_FUNCTION_START;
-			req.flags    = PLUGIN_SCAN_FLAG_OPTIONAL;
+			uint32_t flags         = PLUGIN_SCAN_FLAG_OPTIONAL;
+			int32_t  resultOffset  = 0;
+			int32_t  followRel32At = 0;   // the E8 is the first byte of the match
 
 			if (Signatures::GetMassFragment_FCrCraftingFragment_EntryOffset == ~0ULL)
 			{
-				req.flags        |= PLUGIN_SCAN_FLAG_FOLLOW_REL32;
-				req.followRel32At = 0;   // the E8 is the first byte of the match
+				flags |= PLUGIN_SCAN_FLAG_FOLLOW_REL32;
 			}
 			else
 			{
 				// The other shape this signature supports: the AOB matches inside
 				// the function and the entry is a fixed distance back.
-				req.resultOffset = static_cast<int32_t>(Signatures::GetMassFragment_FCrCraftingFragment_EntryOffset);
+				resultOffset = static_cast<int32_t>(Signatures::GetMassFragment_FCrCraftingFragment_EntryOffset);
 			}
 
-			const uintptr_t fragmentFn = scanner->Resolve(self, &req);
+			const uintptr_t fragmentFn = PluginMap::Function(scanner, self, "GetMassFragment<FCrCraftingFragment>",
+				Signatures::GetMassFragment_FCrCraftingFragment, PLUGIN_SCAN_FUNCTION_START, flags,
+				resultOffset, followRel32At);
 			if (!fragmentFn)
 			{
 				LOG_WARN("ProductionMass: GetMassFragment<FCrCraftingFragment> unresolved");
@@ -280,13 +276,9 @@ namespace ProductionMass
 		// including CrMassSignals::CraftingItemComplete on craft completion.
 		uintptr_t ResolveSignalEntity(IPluginSelf* self, IPluginHookScanner* scanner)
 		{
-			PluginScanRequest req = PLUGIN_SCAN_REQUEST_INIT;
-			req.hookName = "UMassSignalSubsystem::SignalEntity";
-			req.pattern  = Signatures::MassSignalSubsystem_SignalEntity;
-			req.kind     = PLUGIN_SCAN_FUNCTION_START;   // detoured
-			req.flags    = PLUGIN_SCAN_FLAG_OPTIONAL;
-
-			uintptr_t addr = scanner->Resolve(self, &req);
+			// FUNCTION_START: detoured.
+			uintptr_t addr = PluginMap::Function(scanner, self, "UMassSignalSubsystem::SignalEntity",
+				Signatures::MassSignalSubsystem_SignalEntity, PLUGIN_SCAN_FUNCTION_START, PLUGIN_SCAN_FLAG_OPTIONAL);
 			if (!addr)
 				LOG_WARN("ProductionMass: UMassSignalSubsystem::SignalEntity unresolved");
 

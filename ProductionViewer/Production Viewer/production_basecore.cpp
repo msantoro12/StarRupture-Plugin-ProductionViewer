@@ -1,6 +1,7 @@
 #include "production_basecore.h"
 #include "Plugin Core/Helpers/plugin_helpers.h"
 #include "Plugin Core/Signatures/plugin_signatures.h"
+#include "production_fields.h"
 
 #include "Basic.hpp"
 #include "CoreUObject_classes.hpp"
@@ -132,9 +133,8 @@ namespace ProductionBaseCore
 
 			SDK::FCrMassEntityReplicationHelper helper{};
 			g_replicationHelperCtor(&helper, handle, static_cast<const SDK::UObject*>(world));
-			LOG_TRACE("ProductionBaseCore: ResolveBaseCoreName - handle Index=%u Serial=%u -> "
-				"helper NetID=%u PersistentID=%u", handle.Index, handle.SerialNumber,
-				*reinterpret_cast<const uint32_t*>(&helper.NetID), helper.Entity.ID);
+			LOG_TRACE("ProductionBaseCore: ResolveBaseCoreName - handle Index=%u Serial=%u",
+				handle.Index, handle.SerialNumber);
 
 			// On a multiplayer client, a default-name result also means the
 			// subsystem just kicked off an async server request - the real name
@@ -237,13 +237,8 @@ namespace ProductionBaseCore
 			return 0;
 		}
 
-		PluginScanRequest req = PLUGIN_SCAN_REQUEST_INIT;
-		req.hookName = hookName;
-		req.pattern  = pattern;
-		req.kind     = PLUGIN_SCAN_FUNCTION_START;
-		req.flags    = PLUGIN_SCAN_FLAG_OPTIONAL;
-
-		return scanner->Resolve(self, &req);
+		return PluginMap::Function(scanner, self, hookName, pattern,
+			PLUGIN_SCAN_FUNCTION_START, PLUGIN_SCAN_FLAG_OPTIONAL);
 	}
 
 	bool ResolvePatterns(IPluginSelf* self, IPluginHookScanner* scanner)
@@ -362,7 +357,7 @@ namespace ProductionBaseCore
 			return;
 		g_playerRefreshTimer = 0.0f;
 
-		SDK::UWorld* world = SDK::UWorld::GetWorld();
+		SDK::UWorld* world = PluginSdkRuntime::GetWorld();
 		SDK::APawn* pawn = world ? SDK::UGameplayStatics::GetPlayerPawn(world, 0) : nullptr;
 
 		SDK::FVector location{};

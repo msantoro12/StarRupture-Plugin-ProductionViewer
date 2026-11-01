@@ -5,6 +5,7 @@
 #include "production_basecore.h"
 #include "production_waypoint.h"
 #include "Plugin Core/Helpers/plugin_helpers.h"
+#include "production_fields.h"
 #include "Plugin Core/Net/production_net.h"
 #include "Plugin Core/Signatures/plugin_signatures.h"
 #include "Plugin Core/Storage/production_storage.h"
@@ -71,8 +72,10 @@ namespace ProductionTracker
 				return;
 			}
 
-			outKey = itemData->UniqueItemName.ToString();
-			outDisplayName = SDK::UKismetTextLibrary::Conv_TextToString(itemData->ItemName).ToString();
+			const SDK::FName* uniqueName = ProductionViewerFields::ItemUniqueName.In(itemData);
+			const SDK::FText* itemName = ProductionViewerFields::ItemName.In(itemData);
+			outKey = uniqueName ? uniqueName->ToString() : std::string();
+			outDisplayName = itemName ? SDK::UKismetTextLibrary::Conv_TextToString(*itemName).ToString() : std::string();
 
 			if (outKey.empty())
 				outKey = "Unknown";
@@ -227,10 +230,17 @@ namespace ProductionTracker
 			if (ProductionNet::IsRemoteClient())
 				return;
 
-			LOG_DEBUG("ProductionTracker: OnMassCraftingComplete - fragment=%p CurrentRecipe=%p SelectedRecipe=%p CraftingMultiplier=%d",
-				fragment, fragment->CurrentRecipe, fragment->SelectedRecipe, fragment->CraftingMultiplier);
+			SDK::UCrItemRecipeData* currentRecipe = ProductionViewerFields::ValueOr<SDK::UCrItemRecipeData*>(
+				ProductionViewerFields::CraftingCurrentRecipe, fragment, nullptr);
+			SDK::UCrItemRecipeData* selectedRecipe = ProductionViewerFields::ValueOr<SDK::UCrItemRecipeData*>(
+				ProductionViewerFields::CraftingSelectedRecipe, fragment, nullptr);
+			const auto craftingMultiplier = ProductionViewerFields::ValueOr(
+				ProductionViewerFields::CraftingMultiplier, fragment);
 
-			SDK::UCrItemRecipeData* recipe = fragment->CurrentRecipe ? fragment->CurrentRecipe : fragment->SelectedRecipe;
+			LOG_DEBUG("ProductionTracker: OnMassCraftingComplete - fragment=%p CurrentRecipe=%p SelectedRecipe=%p CraftingMultiplier=%d",
+				fragment, currentRecipe, selectedRecipe, static_cast<int>(craftingMultiplier));
+
+			SDK::UCrItemRecipeData* recipe = currentRecipe ? currentRecipe : selectedRecipe;
 			if (!recipe)
 			{
 				LOG_DEBUG("ProductionTracker: OnMassCraftingComplete - no recipe (CurrentRecipe/SelectedRecipe both null), ignoring");
@@ -244,7 +254,7 @@ namespace ProductionTracker
 				return;
 			}
 
-			const int32_t multiplier = fragment->CraftingMultiplier > 0 ? fragment->CraftingMultiplier : 1;
+			const int32_t multiplier = craftingMultiplier > 0 ? static_cast<int32_t>(craftingMultiplier) : 1;
 
 			// Which base core(s) this crafter resides in - cached per crafter,
 			// so this is a map lookup on all but the first (and TTL-refresh)
