@@ -30,15 +30,14 @@ namespace ProductionViewerFields
 	inline auto ReplicationHelperSize = SR_SIZE_CHECK(FCrMassEntityReplicationHelper);
 
 	// UCrGameInstance::ServerSessionName is folded into the SDK's trailing padding,
-	// so it has no name there: a native row. The built offset is CL-127004's and
-	// CL-128786 moved it by 16; the rows below are this plugin's own until the
-	// loader's map carries both.
+	// so it has no name there: a native row. The row below is CL-127004's, the
+	// build this plugin was compiled against; every other build comes from the
+	// loader's map.
 	inline auto ServerSessionName = PluginField<SDK::FString>{ { "UCrGameInstance::ServerSessionName",
 		"UCrGameInstance", "ServerSessionName", PLUGIN_FIELD_NATIVE, sizeof(SDK::FString), 0x290 } };
 
 	inline const PluginFieldCandidate kServerSessionNameRows[] = {
 		{ 127004, 0x290, sizeof(SDK::FString), 0, nullptr },
-		{ 128786, 0x2A0, sizeof(SDK::FString), 0, nullptr },
 	};
 
 	// Asks the loader for every row above. False when any did not resolve; the
