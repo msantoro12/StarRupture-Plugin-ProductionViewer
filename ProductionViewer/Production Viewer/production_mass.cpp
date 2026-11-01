@@ -114,10 +114,10 @@ namespace ProductionMass
 			if (!subsystem)
 				return nullptr;
 
-			// UMassEntitySubsystem::EntityManager (TSharedPtr<FMassEntityManager>) at
-			// offset 0x38 - .Object is the raw FMassEntityManager* (MassEntity_classes.hpp,
-			// Pad_38[0x10]).
-			return *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(subsystem) + 0x38);
+			// UMassEntitySubsystem::EntityManager is a TSharedPtr<FMassEntityManager>;
+			// the raw FMassEntityManager* is its .Object. Null when the loader has no
+			// row for the member on this build.
+			return ProductionViewerFields::EntityManagerOf(subsystem);
 		}
 
 		// UWorld::GetSubsystem<UMassEntitySubsystem>()
@@ -152,7 +152,7 @@ namespace ProductionMass
 			LOG_DEBUG("ProductionMass: SignalEntity - CraftingItemComplete for entity Index=%u SerialNumber=%u",
 				entity.Index, entity.SerialNumber);
 
-			SDK::UWorld* world = *reinterpret_cast<SDK::UWorld**>(reinterpret_cast<uint8_t*>(self) + 0xB0);
+			SDK::UWorld* world = ProductionViewerFields::ValueOr<SDK::UWorld*>(ProductionViewerFields::SignalSubsystemWorld, self);
 			if (!world)
 			{
 				LOG_DEBUG("ProductionMass: SignalEntity - CachedWorld is null, ignoring");
@@ -173,23 +173,6 @@ namespace ProductionMass
 
 			auto* fragment = static_cast<const SDK::FCrCraftingFragment*>(g_getFragmentDataPtr(entityManager, entity, fragmentType));
 			LOG_DEBUG("ProductionMass: SignalEntity - fragment=%p", fragment);
-
-			if (fragment)
-			{
-				const auto* bytes = reinterpret_cast<const uint8_t*>(fragment);
-				char hex[3 * 0x20 + 1] = {};
-				for (int i = 0; i < 0x20; ++i)
-					std::snprintf(hex + i * 3, 4, "%02X ", bytes[i]);
-				LOG_DEBUG("ProductionMass: SignalEntity - fragment[0x00-0x1F]: %s", hex);
-
-				for (int i = 0; i < 0x20; ++i)
-					std::snprintf(hex + i * 3, 4, "%02X ", bytes[0x20 + i]);
-				LOG_DEBUG("ProductionMass: SignalEntity - fragment[0x20-0x3F]: %s", hex);
-
-				for (int i = 0; i < 0x20; ++i)
-					std::snprintf(hex + i * 3, 4, "%02X ", bytes[0x60 + i]);
-				LOG_DEBUG("ProductionMass: SignalEntity - fragment[0x60-0x7F]: %s", hex);
-			}
 
 			if (fragment)
 				g_callback(fragment, world, entity);
@@ -326,8 +309,7 @@ namespace ProductionMass
 				static_cast<void*>(s_transformFragmentStruct), s_transformFragmentStruct->GetFullName().c_str());
 		}
 
-		const auto* fragment = static_cast<const uint8_t*>(
-			g_getFragmentDataPtr(entityManager, entity, s_transformFragmentStruct));
+		const void* fragment = g_getFragmentDataPtr(entityManager, entity, s_transformFragmentStruct);
 		if (!fragment)
 		{
 			LOG_DEBUG("ProductionMass: GetEntityLocation - entity Index=%u Serial=%u has no FTransformFragment",
@@ -335,9 +317,15 @@ namespace ProductionMass
 			return false;
 		}
 
-		// FTransformFragment { FTransform Transform; } - Translation (FVector,
-		// 3 doubles) sits at +0x20 within FTransform (after the 0x20 FQuat).
-		std::memcpy(&outLocation, fragment + 0x20, sizeof(SDK::FVector));
+		const SDK::FVector* translation = ProductionViewerFields::TransformTranslation.In(
+			ProductionViewerFields::TransformFragmentTransform.In(fragment));
+		if (!translation)
+		{
+			LOG_DEBUG("ProductionMass: GetEntityLocation - transform members unresolved on this build");
+			return false;
+		}
+
+		outLocation = *translation;
 		return true;
 	}
 

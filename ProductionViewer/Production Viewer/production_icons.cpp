@@ -297,7 +297,8 @@ namespace ProductionIcons
 						if (!item)
 							continue;
 
-						const std::string uniqueName = item->UniqueItemName.ToString();
+						const SDK::FName* uniqueItemName = ProductionViewerFields::ItemUniqueName.In(item);
+						const std::string uniqueName = uniqueItemName ? uniqueItemName->ToString() : std::string();
 						if (uniqueName.empty())
 							continue;
 

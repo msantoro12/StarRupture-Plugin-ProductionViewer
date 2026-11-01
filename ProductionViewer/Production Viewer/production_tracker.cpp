@@ -269,14 +269,24 @@ namespace ProductionTracker
 			LOG_DEBUG("ProductionTracker: OnMassCraftingComplete - calling GetOutputItem on recipe=%p", recipe);
 			SDK::FAuSimpleItem outputItem = recipe->GetOutputItem();
 			std::string outputKey, outputDisplayName;
-			ResolveItemNames(outputItem.ItemDataBase, outputKey, outputDisplayName);
+			SDK::UAuItemDataBase* outputData = ProductionViewerFields::ValueOr<SDK::UAuItemDataBase*>(
+				ProductionViewerFields::ItemStackData, &outputItem);
+			const int32_t outputCount = ProductionViewerFields::ValueOr<int32_t>(
+				ProductionViewerFields::ItemStackCount, &outputItem);
+			ResolveItemNames(outputData, outputKey, outputDisplayName);
 			LOG_DEBUG("ProductionTracker: OnMassCraftingComplete - output '%s' (%s) x%d (multiplier %d)",
-				outputDisplayName.c_str(), outputKey.c_str(), outputItem.Count, multiplier);
+				outputDisplayName.c_str(), outputKey.c_str(), outputCount, multiplier);
 
-			RecordSample(outputItem.ItemDataBase, static_cast<float>(outputItem.Count * multiplier), true, bases);
+			RecordSample(outputData, static_cast<float>(outputCount * multiplier), true, bases);
 
 			for (const SDK::FAuSimpleItem& resource : recipe->GetNeededResources())
-				RecordSample(resource.ItemDataBase, static_cast<float>(resource.Count * multiplier), false, bases);
+			{
+				RecordSample(ProductionViewerFields::ValueOr<SDK::UAuItemDataBase*>(
+						ProductionViewerFields::ItemStackData, &resource),
+					static_cast<float>(ProductionViewerFields::ValueOr<int32_t>(
+						ProductionViewerFields::ItemStackCount, &resource) * multiplier),
+					false, bases);
+			}
 		}
 
 		// Restores the session file once the role is known. Deferred because
