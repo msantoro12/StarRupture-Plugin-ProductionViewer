@@ -3,6 +3,7 @@
 #include "Plugin Core/Helpers/plugin_helpers.h"
 
 #include "Engine_classes.hpp"
+#include "plugin_map.h"
 
 #include <cmath>
 #include <mutex>
@@ -212,7 +213,7 @@ namespace ProductionWaypoint
 				return;
 		}
 
-		SDK::UWorld* world = SDK::UWorld::GetWorld();
+		SDK::UWorld* world = PluginSdkRuntime::GetWorld();
 		SDK::APawn* pawn = world ? SDK::UGameplayStatics::GetPlayerPawn(world, 0) : nullptr;
 
 		bool valid = false;
