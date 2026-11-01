@@ -42,26 +42,17 @@ namespace ProductionViewerFields
 	// whole struct is checked against the running build.
 	inline auto ReplicationHelperSize = SR_SIZE_CHECK(FCrMassEntityReplicationHelper);
 
-	// The world a UMassSignalSubsystem was created in, and the transform a
-	// Mass entity's FTransformFragment holds. Both are reflected.
-	inline auto SignalSubsystemWorld       = PRODUCTIONVIEWER_FIELD(UMassSignalSubsystem, CachedWorld);
+	// The transform a Mass entity's FTransformFragment holds. Reflected. The
+	// entity manager and the signal subsystem's world come from the SDK's Mass
+	// helpers (PluginMap::MassEntityManagerField, MassSignalWorldField()).
 	inline auto TransformFragmentTransform = PRODUCTIONVIEWER_FIELD(FTransformFragment, Transform);
 
-	// A TSharedPtr<T>: the object pointer and the shared reference controller.
-	struct SharedRef
-	{
-		void* Object;
-		void* Controller;
-	};
-	static_assert(sizeof(SharedRef) == 0x10, "a TSharedPtr is two pointers");
+	using PluginMap::SharedRef;
 
-	// UMassEntitySubsystem::EntityManager is a TSharedPtr the Game-SDK folds
-	// into Pad_38 (not reflected), and FCrGridEntityHandle's two members sit in
-	// a struct the SDK keeps as padding. Their rows below are CL-127004's, the
-	// build this plugin was compiled against; every other build comes from the
-	// loader's map, and a build with neither turns off the feature using them.
-	inline auto EntityManager = PluginField<SharedRef>{ { "UMassEntitySubsystem::EntityManager",
-		"UMassEntitySubsystem", "EntityManager", PLUGIN_FIELD_NATIVE, sizeof(SharedRef), 0x38 } };
+	// FCrGridEntityHandle's two members sit in a struct the SDK keeps as
+	// padding. Their rows below are CL-127004's, the build this plugin was
+	// compiled against; every other build comes from the loader's map, and a
+	// build with neither turns off the feature using them.
 	inline auto GridEntityHandle = PluginField<uint64_t>{ { "FCrGridEntityHandle::EntityHandle",
 		"FCrGridEntityHandle", "EntityHandle", PLUGIN_FIELD_NATIVE, sizeof(uint64_t), 0x0 } };
 	inline auto GridEntityData = PluginField<SharedRef>{ { "FCrGridEntityHandle::Data",
@@ -74,9 +65,6 @@ namespace ProductionViewerFields
 	inline auto TransformTranslation = PluginField<SDK::FVector>{ { "FTransform::Translation",
 		"FTransform", "Translation", PLUGIN_FIELD_NATIVE, sizeof(SDK::FVector), 0x20 } };
 
-	inline const PluginFieldCandidate kEntityManagerRows[] = {
-		{ 127004, 0x38, static_cast<uint32_t>(sizeof(SharedRef)), 0, nullptr },
-	};
 	inline const PluginFieldCandidate kGridEntityHandleRows[] = {
 		{ 127004, 0x0, static_cast<uint32_t>(sizeof(uint64_t)), 0, nullptr },
 	};
@@ -98,34 +86,28 @@ namespace ProductionViewerFields
 		{ 127004, 0x290, sizeof(SDK::FString), 0, nullptr },
 	};
 
-	// The map keys of a feature's fields, as the loader sees them.
-	inline void AddKey(std::vector<const char*>& keys, const char* key) { keys.push_back(key); }
-	inline void AddKey(std::vector<const char*>& keys, const PluginFieldSpec& field) { keys.push_back(field.key); }
-
-	template <class... Key>
-	std::vector<const char*> KeysOf(const Key&... keys)
-	{
-		std::vector<const char*> all;
-		(AddKey(all, keys), ...);
-		return all;
-	}
+	// The SDK's helpers, under the names the plugin uses.
+	using PluginMap::KeysOf;
+	using PluginMap::ValueOr;
 
 	// The parts of the plugin that can be off while the rest runs. A key the
 	// loader cannot resolve on a game build turns off the part that needs it;
-	// the others carry on. A key two parts need is listed in both. The viewer
-	// window and the network stay core.
+	// the others carry on. A key two parts need is listed in both: base cores
+	// read an entity's location through the same subsystem and fragment
+	// accessors as tracking. The viewer window and the network stay core.
 	inline PluginMap::Feature Tracking{ "tracking", "Counting what factories craft",
 		KeysOf("UWorld::GetSubsystem<UMassEntitySubsystem>", "GetMassFragment<FCrCraftingFragment>",
 			"UMassSignalSubsystem::SignalEntity",
 			CraftingSelectedRecipe, CraftingCurrentRecipe, CraftingMultiplier,
 			ItemUniqueName, ItemName, ItemStackData, ItemStackCount, ItemStackSize,
-			EntityManager, SignalSubsystemWorld), {} };
+			PluginMap::MassEntityManagerField, PluginMap::MassSignalWorldField()), {} };
 	inline PluginMap::Feature BaseCores{ "basecores", "Splitting production by base",
 		KeysOf("UCrBaseCoreSubsystem::GetBaseCoresRangedBuilding",
+			"UWorld::GetSubsystem<UMassEntitySubsystem>", "GetMassFragment<FCrCraftingFragment>",
 			"FCrMassEntityReplicationHelper::FCrMassEntityReplicationHelper",
 			"UCrBuildingCustomNameSubsystem::GetBuildingCustomNameByReplicationHelper",
 			ReplicationHelperSize, GridEntityHandle, GridEntityData, GridEntityHandleSize,
-			EntityManager, TransformFragmentTransform, TransformTranslation), {} };
+			PluginMap::MassEntityManagerField, TransformFragmentTransform, TransformTranslation), {} };
 	inline PluginMap::Feature ItemIcons{ "icons", "Item icons", KeysOf(ItemIcon, ItemUniqueName), {} };
 	inline PluginMap::Feature SessionSave{ "sessionsave", "Keeping totals for each saved game",
 		KeysOf(ServerSessionName), {} };
@@ -145,11 +127,11 @@ namespace ProductionViewerFields
 			ItemUniqueName, ItemName, ItemIcon,
 			CraftingSelectedRecipe, CraftingCurrentRecipe, CraftingMultiplier,
 			ItemStackData, ItemStackCount, ItemStackSize, ReplicationHelperSize,
-			SignalSubsystemWorld, TransformFragmentTransform, GridEntityHandleSize);
+			TransformFragmentTransform, GridEntityHandleSize);
+		all = PluginMap::ResolveMassSignalWorld(scanner, self) && all;
+		all = PluginMap::ResolveMassEntityManager(scanner, self) && all;
 		all = PluginMap::ResolveField(scanner, self, ServerSessionName, kServerSessionNameRows,
 			static_cast<uint32_t>(std::size(kServerSessionNameRows))) && all;
-		all = PluginMap::ResolveField(scanner, self, EntityManager, kEntityManagerRows,
-			static_cast<uint32_t>(std::size(kEntityManagerRows))) && all;
 		all = PluginMap::ResolveField(scanner, self, GridEntityHandle, kGridEntityHandleRows,
 			static_cast<uint32_t>(std::size(kGridEntityHandleRows))) && all;
 		all = PluginMap::ResolveField(scanner, self, GridEntityData, kGridEntityDataRows,
@@ -157,21 +139,5 @@ namespace ProductionViewerFields
 		all = PluginMap::ResolveField(scanner, self, TransformTranslation, kTransformTranslationRows,
 			static_cast<uint32_t>(std::size(kTransformTranslationRows))) && all;
 		return all;
-	}
-
-	// The member's value, or a fallback when the member did not resolve.
-	template <class T, class Object>
-	T ValueOr(const PluginField<T>& field, const Object* object, T fallback = T{})
-	{
-		const T* at = field.In(static_cast<const void*>(object));
-		return at ? *at : fallback;
-	}
-
-	// The FMassEntityManager* a UMassEntitySubsystem holds, or null when the
-	// subsystem is null or the member did not resolve.
-	inline void* EntityManagerOf(const void* subsystem)
-	{
-		const SharedRef* at = EntityManager.In(subsystem);
-		return at ? at->Object : nullptr;
 	}
 }

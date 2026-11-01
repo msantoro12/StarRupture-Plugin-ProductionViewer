@@ -117,7 +117,7 @@ namespace ProductionMass
 			// UMassEntitySubsystem::EntityManager is a TSharedPtr<FMassEntityManager>;
 			// the raw FMassEntityManager* is its .Object. Null when the loader has no
 			// row for the member on this build.
-			return ProductionViewerFields::EntityManagerOf(subsystem);
+			return PluginMap::MassEntityManagerOf(subsystem);
 		}
 
 		// UWorld::GetSubsystem<UMassEntitySubsystem>()
@@ -152,7 +152,7 @@ namespace ProductionMass
 			LOG_DEBUG("ProductionMass: SignalEntity - CraftingItemComplete for entity Index=%u SerialNumber=%u",
 				entity.Index, entity.SerialNumber);
 
-			SDK::UWorld* world = ProductionViewerFields::ValueOr<SDK::UWorld*>(ProductionViewerFields::SignalSubsystemWorld, self);
+			SDK::UWorld* world = PluginMap::MassSignalWorldOf(self);
 			if (!world)
 			{
 				LOG_DEBUG("ProductionMass: SignalEntity - CachedWorld is null, ignoring");
