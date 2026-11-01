@@ -7,6 +7,7 @@
 #include "Chimera_structs.hpp"
 #include "MassSignals_classes.hpp"
 #include "plugin_map.h"
+#include "production_fields.h"
 
 #include <windows.h>
 #include <cstdio>
@@ -359,6 +360,12 @@ namespace ProductionMass
 
 	bool Init(IPluginSelf* self, CraftingCompleteCallback callback)
 	{
+		if (!ProductionViewerFields::Tracking.On())
+		{
+			LOG_WARN("ProductionMass: crafting counts are off - the game update moved something they need");
+			return false;
+		}
+
 		if (!self->hooks->Hooks)
 		{
 			LOG_WARN("ProductionMass: hooks unavailable - Mass-simulated crafting will not be tracked");

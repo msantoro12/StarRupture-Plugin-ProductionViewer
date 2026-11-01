@@ -80,6 +80,7 @@ extern "C" {
 	__declspec(dllexport) void OnPluginLoadHooks(IPluginSelf* self, IPluginHookScanner* scanner)
 	{
 		g_self = self;
+		ProductionViewerFields::DeclareFeatures(self, scanner);
 		ProductionViewerFields::Resolve(self, scanner);
 		ProductionTracker::ResolvePatterns(self, scanner);
 	}

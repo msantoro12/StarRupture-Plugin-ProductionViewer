@@ -385,6 +385,12 @@ namespace ProductionIcons
 
 	void Init(IPluginSelf* self)
 	{
+		if (!ProductionViewerFields::ItemIcons.On())
+		{
+			LOG_WARN("ProductionIcons: item icons are off - the game update moved something they need");
+			return;
+		}
+
 		IPluginSplash* splash = (self && self->hooks) ? self->hooks->Splash : nullptr;
 		if (splash && splash->IsVisible())
 			splash->AcquireSplashHold();

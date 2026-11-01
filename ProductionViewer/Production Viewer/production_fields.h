@@ -40,6 +40,30 @@ namespace ProductionViewerFields
 		{ 127004, 0x290, sizeof(SDK::FString), 0, nullptr },
 	};
 
+	// The parts of the plugin that can be off while the rest runs. A key the
+	// loader cannot resolve on a game build turns off the part that needs it;
+	// the others carry on. The viewer window and the network stay core.
+	inline PluginMap::Feature Tracking{ "tracking", "Counting what factories craft",
+		{ "UWorld::GetSubsystem<UMassEntitySubsystem>", "GetMassFragment<FCrCraftingFragment>",
+		  "UMassSignalSubsystem::SignalEntity", "FCrCraftingFragment::SelectedRecipe",
+		  "FCrCraftingFragment::CurrentRecipe", "FCrCraftingFragment::CraftingMultiplier",
+		  "UAuItemDataBase::UniqueItemName", "UAuItemDataBase::ItemName" }, {} };
+	inline PluginMap::Feature BaseCores{ "basecores", "Splitting production by base",
+		{ "UCrBaseCoreSubsystem::GetBaseCoresRangedBuilding",
+		  "FCrMassEntityReplicationHelper::FCrMassEntityReplicationHelper",
+		  "UCrBuildingCustomNameSubsystem::GetBuildingCustomNameByReplicationHelper",
+		  "FCrMassEntityReplicationHelper" }, {} };
+	inline PluginMap::Feature ItemIcons{ "icons", "Item icons", { "UAuItemDataBase::ItemIcon" }, {} };
+	inline PluginMap::Feature SessionSave{ "sessionsave", "Keeping totals for each saved game",
+		{ "UCrGameInstance::ServerSessionName" }, {} };
+
+	// Call before Resolve and ProductionTracker::ResolvePatterns, so a miss
+	// lands on a feature and not on the plugin.
+	inline void DeclareFeatures(IPluginSelf* self, IPluginHookScanner* scanner)
+	{
+		PluginMap::DeclareFeatures(scanner, self, Tracking, BaseCores, ItemIcons, SessionSave);
+	}
+
 	// Asks the loader for every row above. False when any did not resolve; the
 	// loader has then recorded the failure and refuses the plugin.
 	inline bool Resolve(IPluginSelf* self, IPluginHookScanner* scanner)

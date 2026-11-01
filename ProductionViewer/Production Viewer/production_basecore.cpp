@@ -315,7 +315,7 @@ namespace ProductionBaseCore
 
 	std::vector<BaseCoreInfo> GetBaseCoresForBuilding(SDK::UWorld* world, ProductionMass::FMassEntityHandle building)
 	{
-		if (!world || !g_getBaseCoresRangedBuilding)
+		if (!world || !g_getBaseCoresRangedBuilding || !ProductionViewerFields::BaseCores.On())
 			return {};
 
 		const uint64_t key = PackHandle(building);

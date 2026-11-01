@@ -67,6 +67,9 @@ namespace ProductionViewer::Storage
 		// Must run on the game thread — touches UWorld/UObject state.
 		std::string ResolveSessionName()
 		{
+			if (!ProductionViewerFields::SessionSave.On())
+				return "";
+
 			try
 			{
 				SDK::UWorld* world = PluginSdkRuntime::GetWorld();
