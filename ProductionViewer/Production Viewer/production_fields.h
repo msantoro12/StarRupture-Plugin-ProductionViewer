@@ -46,7 +46,6 @@ namespace ProductionViewerFields
 	// Mass entity's FTransformFragment holds. Both are reflected.
 	inline auto SignalSubsystemWorld       = PRODUCTIONVIEWER_FIELD(UMassSignalSubsystem, CachedWorld);
 	inline auto TransformFragmentTransform = PRODUCTIONVIEWER_FIELD(FTransformFragment, Transform);
-	inline auto TransformTranslation       = PRODUCTIONVIEWER_FIELD(FTransform, Translation);
 
 	// A TSharedPtr<T>: the object pointer and the shared reference controller.
 	struct SharedRef
@@ -69,6 +68,12 @@ namespace ProductionViewerFields
 		"FCrGridEntityHandle", "Data", PLUGIN_FIELD_NATIVE, sizeof(SharedRef), 0x8 } };
 	inline auto GridEntityHandleSize = SR_SIZE_CHECK(FCrGridEntityHandle);
 
+	// An FTransform's translation. The engine's struct keeps it in a SIMD
+	// register, 0x20 bytes in the PDB, while the reflected and SDK member is the
+	// 0x18-byte FVector, so it is a native row at the size the plugin reads.
+	inline auto TransformTranslation = PluginField<SDK::FVector>{ { "FTransform::Translation",
+		"FTransform", "Translation", PLUGIN_FIELD_NATIVE, sizeof(SDK::FVector), 0x20 } };
+
 	inline const PluginFieldCandidate kEntityManagerRows[] = {
 		{ 127004, 0x38, static_cast<uint32_t>(sizeof(SharedRef)), 0, nullptr },
 	};
@@ -77,6 +82,9 @@ namespace ProductionViewerFields
 	};
 	inline const PluginFieldCandidate kGridEntityDataRows[] = {
 		{ 127004, 0x8, static_cast<uint32_t>(sizeof(SharedRef)), 0, nullptr },
+	};
+	inline const PluginFieldCandidate kTransformTranslationRows[] = {
+		{ 127004, 0x20, static_cast<uint32_t>(sizeof(SDK::FVector)), 0, nullptr },
 	};
 
 	// UCrGameInstance::ServerSessionName is folded into the SDK's trailing padding,
@@ -137,7 +145,7 @@ namespace ProductionViewerFields
 			ItemUniqueName, ItemName, ItemIcon,
 			CraftingSelectedRecipe, CraftingCurrentRecipe, CraftingMultiplier,
 			ItemStackData, ItemStackCount, ItemStackSize, ReplicationHelperSize,
-			SignalSubsystemWorld, TransformFragmentTransform, TransformTranslation, GridEntityHandleSize);
+			SignalSubsystemWorld, TransformFragmentTransform, GridEntityHandleSize);
 		all = PluginMap::ResolveField(scanner, self, ServerSessionName, kServerSessionNameRows,
 			static_cast<uint32_t>(std::size(kServerSessionNameRows))) && all;
 		all = PluginMap::ResolveField(scanner, self, EntityManager, kEntityManagerRows,
@@ -146,6 +154,8 @@ namespace ProductionViewerFields
 			static_cast<uint32_t>(std::size(kGridEntityHandleRows))) && all;
 		all = PluginMap::ResolveField(scanner, self, GridEntityData, kGridEntityDataRows,
 			static_cast<uint32_t>(std::size(kGridEntityDataRows))) && all;
+		all = PluginMap::ResolveField(scanner, self, TransformTranslation, kTransformTranslationRows,
+			static_cast<uint32_t>(std::size(kTransformTranslationRows))) && all;
 		return all;
 	}
 
