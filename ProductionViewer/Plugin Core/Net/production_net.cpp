@@ -721,8 +721,9 @@ namespace ProductionNet
 				base.key  = entry.baseKey;
 				base.name = ReadFixed(entry.name, kBaseNameChars);
 
-				// The server's world position lets this client show distances.
-				// It cannot resolve the base core itself: Mass entity handles are local to one process.
+				// The server's world position lets this client show distances
+				// and drive the "Go" waypoint. It cannot resolve the base core
+				// itself: Mass entity handles are local to one process.
 				// hasLocation cleared means the server's base core is gone.
 				if (entry.hasLocation && entry.baseKey != 0)
 					ProductionTracker::SetRemoteBaseLocation(entry.baseKey, entry.locX, entry.locY, entry.locZ);
@@ -1324,6 +1325,19 @@ namespace ProductionNet
 			if (existing == playerController)
 				return;
 		g_snapshotRequests.push_back(playerController);
+	}
+
+	bool GetRemoteBaseName(uint64_t baseKey, std::string& outName)
+	{
+		for (const auto& [baseId, base] : g_remoteBases)
+		{
+			if (base.key == baseKey)
+			{
+				outName = base.name;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	SessionRole GetRole()

@@ -106,6 +106,9 @@
     <ClInclude Include="Production Viewer\production_basecore.h">
       <Filter>Production Viewer</Filter>
     </ClInclude>
+    <ClInclude Include="Production Viewer\production_waypoint.h">
+      <Filter>Production Viewer</Filter>
+    </ClInclude>
     <ClInclude Include="Production Viewer\production_ui.h">
       <Filter>Production Viewer</Filter>
     </ClInclude>
@@ -159,6 +162,9 @@
       <Filter>Production Viewer</Filter>
     </ClCompile>
     <ClCompile Include="Production Viewer\production_basecore.cpp">
+      <Filter>Production Viewer</Filter>
+    </ClCompile>
+    <ClCompile Include="Production Viewer\production_waypoint.cpp">
       <Filter>Production Viewer</Filter>
     </ClCompile>
     <ClCompile Include="Production Viewer\production_ui.cpp">

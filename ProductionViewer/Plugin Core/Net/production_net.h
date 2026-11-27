@@ -97,8 +97,8 @@ namespace ProductionNet
 		uint64_t    key = 0;   // ProductionBaseCore::PackHandle; 0 = "Unknown Location"
 		std::string name;
 
-		// The base core's world location, so clients can show distances
-		// without resolving the entity themselves.
+		// The base core's world location, so clients can show distances and
+		// drive the waypoint without resolving the entity themselves.
 		bool  hasLocation = false;
 		float locX = 0.0f;
 		float locY = 0.0f;
@@ -127,6 +127,11 @@ namespace ProductionNet
 	// client-ready callback, never by player-joined: a client is not reachable
 	// yet at PostLogin, and packets sent then are dropped, not buffered.
 	void SendSnapshotTo(void* playerController);
+
+	// Client: the name the server last announced for a base core, empty-handed
+	// (false) if none has arrived. Game thread only, like the packet handlers that
+	// write it.
+	bool GetRemoteBaseName(uint64_t baseKey, std::string& outName);
 
 	SessionRole GetRole();
 
