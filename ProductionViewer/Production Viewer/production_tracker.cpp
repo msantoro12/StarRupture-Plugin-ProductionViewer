@@ -3,7 +3,6 @@
 #include "production_icons.h"
 #include "production_mass.h"
 #include "production_basecore.h"
-#include "production_waypoint.h"
 #include "production_ui.h"
 #include "Plugin Core/Helpers/plugin_helpers.h"
 #include "production_fields.h"
@@ -395,7 +394,6 @@ namespace ProductionTracker
 						it->second.baseName = newName;
 				}
 			}
-			ProductionWaypoint::Tick();
 			ProductionUI::Tick();
 			ProductionNet::Tick(deltaSeconds);
 			ServiceDeferredSessionLoad();
@@ -472,7 +470,9 @@ namespace ProductionTracker
 
 		// Entity handles and cached locations don't survive a session change.
 		ProductionBaseCore::OnSessionLoaded();
-		ProductionWaypoint::OnSessionLoaded();
+
+		// After the clear above: a Go click on a row read before it is dropped.
+		ProductionUI::ResetGo();
 
 		// Clients are told to drop what they hold; the restore itself waits for
 		// the session role (see ServiceDeferredSessionLoad).
@@ -484,7 +484,7 @@ namespace ProductionTracker
 		// Before the role goes: a solo or host session is saved under its own
 		// role, and is not written again once the role is gone.
 		SaveToSession();
-		ProductionWaypoint::OnSessionEnded();
+		ProductionUI::ResetGo();
 		ProductionNet::OnSessionEnded();
 	}
 
@@ -548,6 +548,7 @@ namespace ProductionTracker
 				{
 					Entry entry;
 					entry.name = record.displayName;
+					entry.itemKey = key;
 					entry.total = record.production.GetTotal(range);
 					entry.ratePerMinute = record.production.GetRatePerMinute(TimeRange::Minutes1);
 					entry.history = record.production.GetHistory(range);
@@ -659,11 +660,6 @@ namespace ProductionTracker
 	void ClearRemoteBaseLocation(uint64_t baseKey)
 	{
 		ProductionBaseCore::ClearRemoteBaseLocation(baseKey);
-	}
-
-	bool GetRemoteBaseName(uint64_t baseKey, std::string& outName)
-	{
-		return ProductionNet::GetRemoteBaseName(baseKey, outName);
 	}
 
 	void SeedRemoteItem(const std::string& itemKey, const std::string& displayName,

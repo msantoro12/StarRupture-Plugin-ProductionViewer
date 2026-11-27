@@ -151,8 +151,8 @@ namespace ProductionViewerFields
 	// Without that member there are no item names to show a picture for.
 	inline PluginMap::Feature Icons{ "icons", "Item icons", KeysOf(ItemUniqueName), {} };
 
-	// The base waypoint and the viewer window need no game value of their own.
-	// Each lists one another feature already has: the waypoint points at base
+	// The base waypoint (the Go button) and the viewer window need no game value
+	// of their own. Each lists one another feature already has: Go points at base
 	// cores, and the window has nothing to list without item names.
 	inline PluginMap::Feature BaseWaypoint{ "base-waypoint", "Pointing the way to a base",
 		KeysOf("UCrBaseCoreSubsystem::GetBaseCoresRangedBuilding"), {} };
